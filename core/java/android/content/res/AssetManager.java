@@ -69,7 +69,11 @@ public final class AssetManager {
     private final long[] mOffsets = new long[2];
     
     // For communication with native code.
+<<<<<<< HEAD
     private long mObject;
+=======
+    private int mObject;
+>>>>>>> slimX/kk4.4
 
     private StringBlock mStringBlocks[] = null;
     
@@ -249,6 +253,12 @@ public final class AssetManager {
                     makeStringBlocks(true);
                 }
             }
+        }
+    }
+
+    /*package*/ final void recreateStringBlocks() {
+        synchronized (this) {
+            makeStringBlocks(true);
         }
     }
 
@@ -674,7 +684,7 @@ public final class AssetManager {
             int orientation, int touchscreen, int density, int keyboard,
             int keyboardHidden, int navigation, int screenWidth, int screenHeight,
             int smallestScreenWidthDp, int screenWidthDp, int screenHeightDp,
-            int screenLayout, int uiMode, int majorVersion);
+            int screenLayout, int uiThemeMode, int uiMode, int majorVersion);
 
     /**
      * Retrieve the resource identifier for the given resource name.

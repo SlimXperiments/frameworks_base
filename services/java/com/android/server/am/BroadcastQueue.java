@@ -125,6 +125,11 @@ public final class BroadcastQueue {
     BroadcastRecord mPendingBroadcast = null;
 
     /**
+     * Intent broadcast that we are currently processing
+     */
+    BroadcastRecord mCurrentBroadcast = null;
+
+    /**
      * The receiver index that is pending, to restart the broadcast if needed.
      */
     int mPendingBroadcastRecvIndex;
@@ -366,17 +371,17 @@ public final class BroadcastQueue {
         if (waitForServices && r.curComponent != null && r.queue.mDelayBehindServices
                 && r.queue.mOrderedBroadcasts.size() > 0
                 && r.queue.mOrderedBroadcasts.get(0) == r) {
-            ActivityInfo nextReceiver;
+            ResolveInfo nextReceiver;
             if (r.nextReceiver < r.receivers.size()) {
                 Object obj = r.receivers.get(r.nextReceiver);
-                nextReceiver = (obj instanceof ActivityInfo) ? (ActivityInfo)obj : null;
+                nextReceiver = (obj instanceof ResolveInfo) ? (ResolveInfo)obj : null;
             } else {
                 nextReceiver = null;
             }
             // Don't do this if the next receive is in the same process as the current one.
             if (receiver == null || nextReceiver == null
-                    || receiver.applicationInfo.uid != nextReceiver.applicationInfo.uid
-                    || !receiver.processName.equals(nextReceiver.processName)) {
+                    || receiver.applicationInfo.uid != nextReceiver.activityInfo.applicationInfo.uid
+                    || !receiver.processName.equals(nextReceiver.activityInfo.processName)) {
                 // In this case, we are ready to process the next receiver for the current broadcast,
                 // but are on a queue that would like to wait for services to finish before moving
                 // on.  If there are background services currently starting, then we will go into a
@@ -524,6 +529,10 @@ public final class BroadcastQueue {
         }
     }
 
+    BroadcastRecord getProcessingBroadcast() {
+        return mCurrentBroadcast;
+    }
+
     final void processNextBroadcast(boolean fromMsg) {
         synchronized(mService) {
             BroadcastRecord r;
@@ -544,6 +553,7 @@ public final class BroadcastQueue {
                 r = mParallelBroadcasts.remove(0);
                 r.dispatchTime = SystemClock.uptimeMillis();
                 r.dispatchClockTime = System.currentTimeMillis();
+                mCurrentBroadcast = r;
                 final int N = r.receivers.size();
                 if (DEBUG_BROADCAST_LIGHT) Slog.v(TAG, "Processing parallel broadcast ["
                         + mQueueName + "] " + r);
@@ -555,6 +565,7 @@ public final class BroadcastQueue {
                     deliverToRegisteredReceiverLocked(r, (BroadcastFilter)target, false);
                 }
                 addBroadcastToHistoryLocked(r);
+                mCurrentBroadcast = null;
                 if (DEBUG_BROADCAST_LIGHT) Slog.v(TAG, "Done with parallel broadcast ["
                         + mQueueName + "] " + r);
             }
@@ -604,6 +615,7 @@ public final class BroadcastQueue {
                     return;
                 }
                 r = mOrderedBroadcasts.get(0);
+                mCurrentBroadcast = r;
                 boolean forceReceive = false;
 
                 // Ensure that even if something goes awry with the timeout
@@ -676,6 +688,7 @@ public final class BroadcastQueue {
                     // ... and on to the next...
                     addBroadcastToHistoryLocked(r);
                     mOrderedBroadcasts.remove(0);
+                    mCurrentBroadcast = null;
                     r = null;
                     looped = true;
                     continue;

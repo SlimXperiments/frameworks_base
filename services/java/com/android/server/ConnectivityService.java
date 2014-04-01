@@ -457,13 +457,18 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         }
 
         // setup our unique device name
-        if (TextUtils.isEmpty(SystemProperties.get("net.hostname"))) {
+        String hostname = Settings.Secure.getString(context.getContentResolver(),
+                Settings.Secure.DEVICE_HOSTNAME);
+        if (TextUtils.isEmpty(hostname)
+                && TextUtils.isEmpty(SystemProperties.get("net.hostname"))) {
             String id = Settings.Secure.getString(context.getContentResolver(),
                     Settings.Secure.ANDROID_ID);
             if (id != null && id.length() > 0) {
                 String name = new String("android-").concat(id);
                 SystemProperties.set("net.hostname", name);
             }
+        } else {
+            SystemProperties.set("net.hostname", hostname);
         }
 
         // read our default dns server ip
@@ -669,6 +674,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         // start network sampling ..
         Intent intent = new Intent(ACTION_PKT_CNT_SAMPLE_INTERVAL_ELAPSED, null);
+        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         mSampleIntervalElapsedIntent = PendingIntent.getBroadcast(mContext,
                 SAMPLE_INTERVAL_ELAPSED_REQUEST_CODE, intent, 0);
 
@@ -2557,7 +2563,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         if (TextUtils.equals(mNetTrackers[netType].getNetworkInfo().getReason(),
                              PhoneConstants.REASON_LINK_PROPERTIES_CHANGED)) {
             if (isTetheringSupported()) {
-                mTethering.handleTetherIfaceChange();
+                mTethering.handleTetherIfaceChange(mNetTrackers[netType].getNetworkInfo());
             }
         }
     }

@@ -1164,10 +1164,15 @@ public class MediaScanner
 
         // compute original size of images
         mOriginalCount = 0;
-        c = mMediaProvider.query(mPackageName, mImagesUri, ID_PROJECTION, null, null, null, null);
-        if (c != null) {
-            mOriginalCount = c.getCount();
-            c.close();
+        try {
+            c = mMediaProvider.query(mPackageName, mImagesUri, new String[] {"COUNT(*)"}, null, null, null, null);
+            if (c.moveToFirst()) {
+                mOriginalCount = c.getInt(0);
+            }
+        } finally {
+            if (c != null && !c.isClosed()) {
+                c.close();
+            }
         }
     }
 
@@ -1411,7 +1416,7 @@ public class MediaScanner
         int offset = 1;
         while (offset >= 0) {
             int slashIndex = path.indexOf('/', offset);
-            if (slashIndex > offset) {
+            if (slashIndex >= offset) {
                 slashIndex++; // move past slash
                 File file = new File(path.substring(0, slashIndex) + ".nomedia");
                 if (file.exists()) {

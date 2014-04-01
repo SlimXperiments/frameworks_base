@@ -66,6 +66,7 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
         int iconId;
         String label;
         boolean enabled = false;
+        int mode;
     }
     static class BatteryState extends State {
         int batteryLevel;
@@ -607,7 +608,9 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
         mBatteryCallback.refreshView(mBatteryTile, mBatteryState);
     }
     void refreshBatteryTile() {
-        mBatteryCallback.refreshView(mBatteryTile, mBatteryState);
+        if (mBatteryCallback != null) {
+            mBatteryCallback.refreshView(mBatteryTile, mBatteryState);
+        }
     }
 
     // Location
@@ -619,18 +622,19 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
 
     void refreshLocationTile() {
         if (mLocationTile != null) {
-            onLocationSettingsChanged(mLocationState.enabled);
+            onLocationSettingsChanged(mLocationState.enabled, mLocationState.mode);
         }
     }
 
     @Override
-    public void onLocationSettingsChanged(boolean locationEnabled) {
+    public void onLocationSettingsChanged(boolean locationEnabled, int locationMode) {
         int textResId = locationEnabled ? R.string.quick_settings_location_label
                 : R.string.quick_settings_location_off_label;
         String label = mContext.getText(textResId).toString();
         int locationIconId = locationEnabled
                 ? R.drawable.ic_qs_location_on : R.drawable.ic_qs_location_off;
         mLocationState.enabled = locationEnabled;
+        mLocationState.mode = locationMode;
         mLocationState.label = label;
         mLocationState.iconId = locationIconId;
         mLocationCallback.refreshView(mLocationTile, mLocationState);
@@ -692,14 +696,8 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
         } else {
             connectedRoute = null;
             connecting = false;
-            final int count = mMediaRouter.getRouteCount();
-            for (int i = 0; i < count; i++) {
-                MediaRouter.RouteInfo route = mMediaRouter.getRouteAt(i);
-                if (route.matchesTypes(MediaRouter.ROUTE_TYPE_REMOTE_DISPLAY)) {
-                    enabled = true;
-                    break;
-                }
-            }
+            enabled = mMediaRouter.isRouteAvailable(MediaRouter.ROUTE_TYPE_REMOTE_DISPLAY,
+                    MediaRouter.AVAILABILITY_FLAG_IGNORE_DEFAULT_ROUTE);
         }
 
         mRemoteDisplayState.enabled = enabled;

@@ -35,29 +35,36 @@
         android:background="@drawable/ic_notify_button_bg"
         android:enabled="false"
         >
-        <com.android.systemui.statusbar.policy.Clock
+        <com.android.systemui.statusbar.policy.ClockStock
             android:id="@+id/clock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:singleLine="true"
             android:textAppearance="@style/TextAppearance.StatusBar.Expanded.Clock"
+            android:background="@drawable/ic_notify_button_bg"
             android:layout_centerVertical="true"
+            android:clickable="true"
             />
 
-        <com.android.systemui.statusbar.policy.DateView android:id="@+id/date"
+        <com.android.systemui.statusbar.policy.DateView
+            android:id="@+id/date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:singleLine="true"
             android:textAppearance="@style/TextAppearance.StatusBar.Expanded.Date"
             android:layout_toEndOf="@id/clock"
-            android:layout_alignBaseline="@id/clock"
+            android:background="@drawable/ic_notify_button_bg"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:layout_centerVertical="true"
             />
     </RelativeLayout>
 
-    <Space
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+    <ImageView
+        android:id="@+id/spacer"
+        android:background="@drawable/ic_notify_button_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_weight="1"
         />
 

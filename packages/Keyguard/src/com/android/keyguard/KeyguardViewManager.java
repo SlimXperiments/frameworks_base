@@ -19,6 +19,8 @@ package com.android.keyguard;
 import android.app.PendingIntent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.TransitionDrawable;
 import com.android.internal.policy.IKeyguardShowCallback;
 import com.android.internal.widget.LockPatternUtils;
 
@@ -26,6 +28,7 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -40,6 +43,8 @@ import android.os.IBinder;
 import android.os.Parcelable;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.util.Log;
 import android.util.Slog;
 import android.util.SparseArray;
@@ -68,6 +73,11 @@ public class KeyguardViewManager {
 
     // Timeout used for keypresses
     static final int DIGIT_PRESS_WAKE_MILLIS = 5000;
+
+    private static final int ROTATION_OFF = 0;
+    private static final int ROTATION_ON = 1;
+    private static final int ROTATION_PORTRAIT = 2;
+    private static final int ROTATION_LANDSCAPE = 3;
 
     private final Context mContext;
     private final ViewManager mViewManager;
@@ -117,10 +127,10 @@ public class KeyguardViewManager {
     public synchronized void show(Bundle options) {
         if (DEBUG) Log.d(TAG, "show(); mKeyguardView==" + mKeyguardView);
 
-        boolean enableScreenRotation = shouldEnableScreenRotation();
+        int rotationAngles = shouldEnableScreenRotation();
 
-        maybeCreateKeyguardLocked(enableScreenRotation, false, options);
-        maybeEnableScreenRotation(enableScreenRotation);
+        maybeCreateKeyguardLocked(rotationAngles, false, options);
+        maybeEnableScreenRotation(rotationAngles);
 
         // Disable common aspects of the system/status/navigation bars that are not appropriate or
         // useful on any keyguard screen but can be re-shown by dialogs or SHOW_WHEN_LOCKED
@@ -140,15 +150,21 @@ public class KeyguardViewManager {
         mKeyguardView.requestFocus();
     }
 
-    private boolean shouldEnableScreenRotation() {
+    private int shouldEnableScreenRotation() {
         Resources res = mContext.getResources();
-        return SystemProperties.getBoolean("lockscreen.rot_override",false)
+        boolean enableScreenRotation = SystemProperties.getBoolean("lockscreen.rot_override",false)
                 || res.getBoolean(R.bool.config_enableLockScreenRotation);
+        return Settings.System.getIntForUser(
+                mContext.getContentResolver(),
+                Settings.System.LOCKSCREEN_ROTATION_ENABLED,
+                enableScreenRotation ? ROTATION_ON : ROTATION_OFF,
+                UserHandle.USER_CURRENT);
     }
 
     private boolean shouldEnableTranslucentDecor() {
         Resources res = mContext.getResources();
-        return res.getBoolean(R.bool.config_enableLockScreenTranslucentDecor);
+        return res.getBoolean(R.bool.config_enableLockScreenTranslucentDecor)
+            && res.getBoolean(R.bool.config_enableTranslucentDecor);
     }
 
     class ViewManagerHost extends FrameLayout {
@@ -160,19 +176,7 @@ public class KeyguardViewManager {
         private final Drawable mBackgroundDrawable = new Drawable() {
             @Override
             public void draw(Canvas canvas) {
-                if (mCustomBackground != null) {
-                    final Rect bounds = mCustomBackground.getBounds();
-                    final int vWidth = getWidth();
-                    final int vHeight = getHeight();
-
-                    final int restore = canvas.save();
-                    canvas.translate(-(bounds.width() - vWidth) / 2,
-                            -(bounds.height() - vHeight) / 2);
-                    mCustomBackground.draw(canvas);
-                    canvas.restoreToCount(restore);
-                } else {
-                    canvas.drawColor(BACKGROUND_COLOR, PorterDuff.Mode.SRC);
-                }
+                drawToCanvas(canvas, mCustomBackground);
             }
 
             @Override
@@ -189,26 +193,77 @@ public class KeyguardViewManager {
             }
         };
 
+        private TransitionDrawable mTransitionBackground = null;
+
         public ViewManagerHost(Context context) {
             super(context);
             setBackground(mBackgroundDrawable);
         }
 
-        public void setCustomBackground(Drawable d) {
-            mCustomBackground = d;
-            if (d != null) {
-                d.setColorFilter(BACKGROUND_COLOR, PorterDuff.Mode.SRC_OVER);
+        public void drawToCanvas(Canvas canvas, Drawable drawable) {
+            if (drawable != null) {
+                final Rect bounds = drawable.getBounds();
+                final int vWidth = getWidth();
+                final int vHeight = getHeight();
+
+                final int restore = canvas.save();
+                canvas.translate(-(bounds.width() - vWidth) / 2,
+                        -(bounds.height() - vHeight) / 2);
+                drawable.draw(canvas);
+                canvas.restoreToCount(restore);
+            } else {
+                canvas.drawColor(BACKGROUND_COLOR, PorterDuff.Mode.SRC);
             }
-            computeCustomBackgroundBounds();
+        }
+
+        public void setCustomBackground(Drawable d) {
+            if (!ActivityManager.isHighEndGfx() || !mScreenOn) {
+                mCustomBackground = d;
+                if (d != null) {
+                    d.setColorFilter(BACKGROUND_COLOR, PorterDuff.Mode.SRC_OVER);
+                }
+                computeCustomBackgroundBounds(mCustomBackground);
+                setBackground(mBackgroundDrawable);
+            } else {
+                Drawable old = mCustomBackground;
+                if (old == null && d == null) {
+                    return;
+                }
+                boolean newIsNull = false;
+                if (old == null) {
+                    old = new ColorDrawable(BACKGROUND_COLOR);
+                }
+                if (d == null) {
+                    d = new ColorDrawable(BACKGROUND_COLOR);
+                    newIsNull = true;
+                } else {
+                    d.setColorFilter(BACKGROUND_COLOR, PorterDuff.Mode.SRC_OVER);
+                }
+                computeCustomBackgroundBounds(d);
+                Bitmap b = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(b);
+                drawToCanvas(c, d);
+
+                Drawable dd = new BitmapDrawable(mContext.getResources(), b);
+
+                mTransitionBackground = new TransitionDrawable(new Drawable[] {old, dd});
+                mTransitionBackground.setCrossFadeEnabled(true);
+                setBackground(mTransitionBackground);
+
+                mTransitionBackground.startTransition(200);
+
+                mCustomBackground = newIsNull ? null : dd;
+
+            }
             invalidate();
         }
 
-        private void computeCustomBackgroundBounds() {
-            if (mCustomBackground == null) return; // Nothing to do
+        private void computeCustomBackgroundBounds(Drawable background) {
+            if (background == null) return; // Nothing to do
             if (!isLaidOut()) return; // We'll do this later
 
-            final int bgWidth = mCustomBackground.getIntrinsicWidth();
-            final int bgHeight = mCustomBackground.getIntrinsicHeight();
+            final int bgWidth = background.getIntrinsicWidth();
+            final int bgHeight = background.getIntrinsicHeight();
             final int vWidth = getWidth();
             final int vHeight = getHeight();
 
@@ -216,16 +271,16 @@ public class KeyguardViewManager {
             final float vAspect = (float) vWidth / vHeight;
 
             if (bgAspect > vAspect) {
-                mCustomBackground.setBounds(0, 0, (int) (vHeight * bgAspect), vHeight);
+                background.setBounds(0, 0, (int) (vHeight * bgAspect), vHeight);
             } else {
-                mCustomBackground.setBounds(0, 0, vWidth, (int) (vWidth / bgAspect));
+                background.setBounds(0, 0, vWidth, (int) (vWidth / bgAspect));
             }
         }
 
         @Override
         protected void onSizeChanged(int w, int h, int oldw, int oldh) {
             super.onSizeChanged(w, h, oldw, oldh);
-            computeCustomBackgroundBounds();
+            computeCustomBackgroundBounds(mCustomBackground);
         }
 
         @Override
@@ -262,7 +317,7 @@ public class KeyguardViewManager {
 
     SparseArray<Parcelable> mStateContainer = new SparseArray<Parcelable>();
 
-    private void maybeCreateKeyguardLocked(boolean enableScreenRotation, boolean force,
+    private void maybeCreateKeyguardLocked(int rotationAngles, boolean force,
             Bundle options) {
         if (mKeyguardHost != null) {
             mKeyguardHost.saveHierarchyState(mStateContainer);
@@ -288,8 +343,21 @@ public class KeyguardViewManager {
                     stretch, stretch, type, flags, PixelFormat.TRANSLUCENT);
             lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
             lp.windowAnimations = R.style.Animation_LockScreen;
-            lp.screenOrientation = enableScreenRotation ?
-                    ActivityInfo.SCREEN_ORIENTATION_USER : ActivityInfo.SCREEN_ORIENTATION_NOSENSOR;
+
+            switch (rotationAngles) {
+                case ROTATION_OFF:
+                    lp.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_NOSENSOR;
+                    break;
+                case ROTATION_ON:
+                    lp.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_USER;
+                    break;
+                case ROTATION_PORTRAIT:
+                    lp.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
+                    break;
+                case ROTATION_LANDSCAPE:
+                    lp.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+                    break;
+            }
 
             if (ActivityManager.isHighEndGfx()) {
                 lp.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
@@ -370,14 +438,29 @@ public class KeyguardViewManager {
         mWindowLayoutParams.userActivityTimeout = KeyguardViewMediator.AWAKE_INTERVAL_DEFAULT_MS;
     }
 
-    private void maybeEnableScreenRotation(boolean enableScreenRotation) {
+    private void maybeEnableScreenRotation(int rotationAngles) {
         // TODO: move this outside
-        if (enableScreenRotation) {
-            if (DEBUG) Log.d(TAG, "Rotation sensor for lock screen On!");
-            mWindowLayoutParams.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_USER;
-        } else {
-            if (DEBUG) Log.d(TAG, "Rotation sensor for lock screen Off!");
-            mWindowLayoutParams.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_NOSENSOR;
+        switch (rotationAngles) {
+            case ROTATION_OFF:
+                if (DEBUG) Log.d(TAG, "Rotation sensor for lock screen Off!");
+                mWindowLayoutParams.screenOrientation
+                        = ActivityInfo.SCREEN_ORIENTATION_NOSENSOR;
+                break;
+            case ROTATION_ON:
+                if (DEBUG) Log.d(TAG, "Rotation sensor for lock screen On!");
+                mWindowLayoutParams.screenOrientation
+                        = ActivityInfo.SCREEN_ORIENTATION_USER;
+                break;
+            case ROTATION_PORTRAIT:
+                if (DEBUG) Log.d(TAG, "Rotation sensor for lock screen Portrait!");
+                mWindowLayoutParams.screenOrientation
+                        = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
+                break;
+            case ROTATION_LANDSCAPE:
+                if (DEBUG) Log.d(TAG, "Rotation sensor for lock screen Landscape!");
+                mWindowLayoutParams.screenOrientation
+                        = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+                break;
         }
         mViewManager.updateViewLayout(mKeyguardHost, mWindowLayoutParams);
     }
@@ -539,6 +622,12 @@ public class KeyguardViewManager {
     public void showAssistant() {
         if (mKeyguardView != null) {
             mKeyguardView.showAssistant();
+        }
+    }
+
+    public void showCustomIntent(Intent intent) {
+        if (mKeyguardView != null) {
+            mKeyguardView.showCustomIntent(intent);
         }
     }
 
