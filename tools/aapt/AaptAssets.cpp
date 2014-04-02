@@ -517,7 +517,7 @@ AaptGroupEntry::parseFilterNamePart(const String8& part, int* axis, AxisValue* v
     // ui theme mode
     if (getUiThemeModeName(part.string(), &config)) {
         *axis = AXIS_UITHEMEMODE;
-        *value = config.uiThemeMode;
+        value->intValue = config.uiThemeMode;
         return 0;
     }
 
@@ -618,7 +618,7 @@ AaptGroupEntry::getConfigValueForAxis(const ResTable_config& config, int axis)
             value.intValue = config.orientation;
             break;
         case AXIS_UITHEMEMODE:
-            value.intValue config.uiThemeMode;
+            value.intValue = config.uiThemeMode;
         case AXIS_UIMODETYPE:
             value.intValue = (config.uiMode&ResTable_config::MASK_UI_MODE_TYPE);
             break;

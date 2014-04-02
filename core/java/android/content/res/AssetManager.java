@@ -69,11 +69,7 @@ public final class AssetManager {
     private final long[] mOffsets = new long[2];
     
     // For communication with native code.
-<<<<<<< HEAD
     private long mObject;
-=======
-    private int mObject;
->>>>>>> slimX/kk4.4
 
     private StringBlock mStringBlocks[] = null;
     

@@ -1060,8 +1060,8 @@ public final class ActivityManagerService extends ActivityManagerNative
     static final int REQUEST_ALL_PSS_MSG = 39;
     static final int UPDATE_TIME = 40;
 
-    static final int POST_PRIVACY_NOTIFICATION_MSG = 40;
-    static final int CANCEL_PRIVACY_NOTIFICATION_MSG = 41;
+    static final int POST_PRIVACY_NOTIFICATION_MSG = 41;
+    static final int CANCEL_PRIVACY_NOTIFICATION_MSG = 42;
 
     static final int FIRST_ACTIVITY_STACK_MSG = 100;
     static final int FIRST_BROADCAST_QUEUE_MSG = 200;
@@ -1741,7 +1741,8 @@ public final class ActivityManagerService extends ActivityManagerNative
                 } catch (NameNotFoundException e) {
                     Slog.w(TAG, "Unable to create context for privacy guard notification", e);
                 }
-            } break;
+                break;
+            }
             case CANCEL_PRIVACY_NOTIFICATION_MSG: {
                 INotificationManager inm = NotificationManager.getService();
                 if (inm == null) {
@@ -1755,7 +1756,8 @@ public final class ActivityManagerService extends ActivityManagerNative
                             "Error canceling notification for service", e);
                 } catch (RemoteException e) {
                 }
-            } break;
+                break;
+            }
             }
         }
     };
