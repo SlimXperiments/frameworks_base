@@ -1262,7 +1262,7 @@ static void nativeSetShowTouches(JNIEnv* env,
 }
 
 static void nativeSetStylusIconEnabled(JNIEnv* env,
-        jclass clazz, jint ptr, jboolean enabled) {
+        jclass clazz, jlong ptr, jboolean enabled) {
     NativeInputManager* im = reinterpret_cast<NativeInputManager*>(ptr);
 
     im->setStylusIconEnabled(enabled);
@@ -1373,9 +1373,9 @@ static JNINativeMethod gInputManagerMethods[] = {
             (void*) nativeSetPointerSpeed },
     { "nativeSetShowTouches", "(JZ)V",
             (void*) nativeSetShowTouches },
-    { "nativeSetStylusIconEnabled", "(IZ)V",
+    { "nativeSetStylusIconEnabled", "(JZ)V",
             (void*) nativeSetStylusIconEnabled },
-    { "nativeVibrate", "(II[JII)V",
+    { "nativeVibrate", "(JI[JII)V",
             (void*) nativeVibrate },
     { "nativeCancelVibrate", "(JII)V",
             (void*) nativeCancelVibrate },
