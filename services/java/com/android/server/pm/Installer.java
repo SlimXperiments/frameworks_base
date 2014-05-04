@@ -332,7 +332,7 @@ public final class Installer {
         return execute(builder.toString());
     }
 
-    public int dexopt(String apkPath, int uid, boolean isPublic) {
+    public int dexopt(String apkPath, int uid, boolean isPublic, String instructionSet) {
         StringBuilder builder = new StringBuilder("dexopt");
         builder.append(' ');
         builder.append(apkPath);
@@ -340,10 +340,13 @@ public final class Installer {
         builder.append(uid);
         builder.append(isPublic ? " 1" : " 0");
         builder.append(" *");         // No pkgName arg present
+        builder.append(' ');
+        builder.append(instructionSet);
         return execute(builder.toString());
     }
 
-    public int dexopt(String apkPath, int uid, boolean isPublic, String pkgName) {
+    public int dexopt(String apkPath, int uid, boolean isPublic, String pkgName,
+            String instructionSet) {
         StringBuilder builder = new StringBuilder("dexopt");
         builder.append(' ');
         builder.append(apkPath);
@@ -352,6 +355,8 @@ public final class Installer {
         builder.append(isPublic ? " 1" : " 0");
         builder.append(' ');
         builder.append(pkgName);
+        builder.append(' ');
+        builder.append(instructionSet);
         return execute(builder.toString());
     }
 
@@ -366,19 +371,23 @@ public final class Installer {
         return execute(builder.toString());
     }
 
-    public int movedex(String srcPath, String dstPath) {
+    public int movedex(String srcPath, String dstPath, String instructionSet) {
         StringBuilder builder = new StringBuilder("movedex");
         builder.append(' ');
         builder.append(srcPath);
         builder.append(' ');
         builder.append(dstPath);
+        builder.append(' ');
+        builder.append(instructionSet);
         return execute(builder.toString());
     }
 
-    public int rmdex(String codePath) {
+    public int rmdex(String codePath, String instructionSet) {
         StringBuilder builder = new StringBuilder("rmdex");
         builder.append(' ');
         builder.append(codePath);
+        builder.append(' ');
+        builder.append(instructionSet);
         return execute(builder.toString());
     }
 
@@ -465,7 +474,7 @@ public final class Installer {
     }
 
     public int getSizeInfo(String pkgName, int persona, String apkPath, String libDirPath,
-            String fwdLockApkPath, String asecPath, PackageStats pStats) {
+            String fwdLockApkPath, String asecPath, String instructionSet, PackageStats pStats) {
         StringBuilder builder = new StringBuilder("getsize");
         builder.append(' ');
         builder.append(pkgName);
@@ -479,6 +488,8 @@ public final class Installer {
         builder.append(fwdLockApkPath != null ? fwdLockApkPath : "!");
         builder.append(' ');
         builder.append(asecPath != null ? asecPath : "!");
+        builder.append(' ');
+        builder.append(instructionSet);
 
         String s = transaction(builder.toString());
         String res[] = s.split(" ");
