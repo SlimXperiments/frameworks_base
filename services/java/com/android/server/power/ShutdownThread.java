@@ -48,6 +48,7 @@ import android.os.storage.IMountShutdownObserver;
 import android.provider.Settings;
 
 import com.android.internal.telephony.ITelephony;
+import com.android.server.pm.PackageManagerService;
 
 import android.util.Log;
 import android.view.WindowManager;
@@ -388,6 +389,14 @@ public final class ShutdownThread extends Thread {
                 am.shutdown(MAX_BROADCAST_TIME);
             } catch (RemoteException e) {
             }
+        }
+
+        Log.i(TAG, "Shutting down package manager...");
+
+        final PackageManagerService pm = (PackageManagerService)
+            ServiceManager.getService("package");
+        if (pm != null) {
+            pm.shutdown();
         }
 
         // Shutdown MountService to ensure media is in a safe state
