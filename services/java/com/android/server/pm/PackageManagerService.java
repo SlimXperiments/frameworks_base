@@ -1365,6 +1365,8 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
 
                 final boolean[] didDexOptLibraryOrTool = {false};
+                
+                final List<String> instructionSets = getAllInstructionSets();
 
                 /**
                  * Ensure all external libraries have had dexopt run on them.
@@ -1384,13 +1386,13 @@ public class PackageManagerService extends IPackageManager.Stub {
 
                             try {
                                 if (DexFile.isDexOptNeededInternal(lib, null, instructionSet, false)) {
-                                        lib, null, instructionSet, false)) {
+                                    final String _instructionSet = instructionSet;
                                     executorService.submit(new Runnable() {
                                         @Override
                                         public void run() {
                                             alreadyDexOpted.add(lib);
                                             // The list of "shared libraries" we have at this point is
-                                            mInstaller.dexopt(lib, Process.SYSTEM_UID, true, instructionSet);
+                                            mInstaller.dexopt(lib, Process.SYSTEM_UID, true, _instructionSet);
                                             didDexOptLibraryOrTool[0] = true;
                                         }
                                     });
@@ -1436,7 +1438,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                     for (String instructionSet : instructionSets) {
                         for (int i=0; i<frameworkFiles.length; i++) {
                             File libPath = new File(frameworkDir, frameworkFiles[i]);
-                            String path = libPath.getPath();
+                            final String path = libPath.getPath();
                             // Skip the file if we already did it.
                             if (alreadyDexOpted.contains(path)) {
                                 continue;
@@ -1447,10 +1449,11 @@ public class PackageManagerService extends IPackageManager.Stub {
                             }
                             try {
                                 if (DexFile.isDexOptNeededInternal(path, null, instructionSet, false)) {
+                                    final String _instructionSet = instructionSet;
                                     executorService.submit(new Runnable() {
                                         @Override
                                         public void run() {
-                                            mInstaller.dexopt(path, Process.SYSTEM_UID, true, instructionSet);
+                                            mInstaller.dexopt(path, Process.SYSTEM_UID, true, _instructionSet);
                                             didDexOptLibraryOrTool[0] = true;
                                         }
                                     });
@@ -1484,7 +1487,7 @@ public class PackageManagerService extends IPackageManager.Stub {
         mVendorOverlayInstallObserver = new AppDirObserver(
             vendorOverlayDir.getPath(), OBSERVER_EVENTS, true, false);
         mVendorOverlayInstallObserver.startWatching();
-        scanDirLI(vendorOverlayDir, PackageParser.PARSE_IS_SYSTEM
+        scanDir(vendorOverlayDir, PackageParser.PARSE_IS_SYSTEM
                 | PackageParser.PARSE_IS_SYSTEM_DIR, scanMode | SCAN_TRUSTED_OVERLAY, 0);
 
         // Find base frameworks (resource packages without code).
@@ -1719,7 +1722,7 @@ public class PackageManagerService extends IPackageManager.Stub {
 
             mRequiredVerifierPackage = getRequiredVerifierLPr();
         } // synchronized (mPackages)
-    } // synchronized (mInstallLock)
+        } // synchronized (mInstallLock)
     }
 
     private static void pruneDexFiles(File cacheDir) {
