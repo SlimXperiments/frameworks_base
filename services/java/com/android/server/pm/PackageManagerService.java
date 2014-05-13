@@ -611,9 +611,15 @@ public class PackageManagerService extends IPackageManager.Stub {
         private final AtomicLong mLastWritten = new AtomicLong(0);
         private final AtomicBoolean mBackgroundWriteRunning = new AtomicBoolean(false);
 
+        private boolean mIsFirstBoot = false;
+
+        boolean isFirstBoot() {
+            return mIsFirstBoot;
+        }
+
         void write(boolean force) {
             if (force) {
-                write();
+                writeInternal();
                 return;
             }
             if (SystemClock.elapsedRealtime() - mLastWritten.get() < WRITE_INTERVAL
@@ -625,7 +631,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                     @Override
                     public void run() {
                         try {
-                            write(true);
+                            writeInternal();
                         } finally {
                             mBackgroundWriteRunning.set(false);
                         }
@@ -634,7 +640,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             }
         }
 
-        private void write() {
+        private void writeInternal() {
             synchronized (mPackages) {
                 synchronized (mFileLock) {
                     AtomicFile file = getFile();
@@ -699,6 +705,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                         pkg.mLastPackageUsageTimeInMills = timeInMillis;
                     }
                 } catch (FileNotFoundException expected) {
+                    mIsFirstBoot = true;
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to read package usage times", e);
                 } finally {
@@ -1766,7 +1773,7 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     @Override
     public boolean isFirstBoot() {
-        return !mRestoredSettings;
+        return !mRestoredSettings || mPackageUsage.isFirstBoot();
     }
 
     @Override
@@ -4323,7 +4330,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             if (updateUsage) {
                 p.mLastPackageUsageTimeInMills = System.currentTimeMillis();
             }
-            mPackageUsage.write();
+            mPackageUsage.write(false);
             if (!p.mDexOptNeeded) {
                 return false;
             }
