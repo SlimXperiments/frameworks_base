@@ -1371,7 +1371,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                     Slog.w(TAG, "No BOOTCLASSPATH found!");
                 }
 
-                final boolean[] didDexOptLibraryOrTool = {false};
+                boolean didDexOptLibraryOrTool = false;
                 
                 final List<String> instructionSets = getAllInstructionSets();
 
@@ -1394,13 +1394,13 @@ public class PackageManagerService extends IPackageManager.Stub {
                             try {
                                 if (DexFile.isDexOptNeededInternal(lib, null, instructionSet, false)) {
                                     final String _instructionSet = instructionSet;
+                                    alreadyDexOpted.add(lib);
+                                    didDexOptLibraryOrTool = true;
                                     executorService.submit(new Runnable() {
                                         @Override
                                         public void run() {
-                                            alreadyDexOpted.add(lib);
                                             // The list of "shared libraries" we have at this point is
                                             mInstaller.dexopt(lib, Process.SYSTEM_UID, true, _instructionSet);
-                                            didDexOptLibraryOrTool[0] = true;
                                         }
                                     });
                                 }
@@ -1457,11 +1457,11 @@ public class PackageManagerService extends IPackageManager.Stub {
                             try {
                                 if (DexFile.isDexOptNeededInternal(path, null, instructionSet, false)) {
                                     final String _instructionSet = instructionSet;
+                                    didDexOptLibraryOrTool = true;
                                     executorService.submit(new Runnable() {
                                         @Override
                                         public void run() {
                                             mInstaller.dexopt(path, Process.SYSTEM_UID, true, _instructionSet);
-                                            didDexOptLibraryOrTool[0] = true;
                                         }
                                     });
                                 }
@@ -1480,7 +1480,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                     }
                 }
 
-                if (didDexOptLibraryOrTool[0]) {
+                if (didDexOptLibraryOrTool) {
                     pruneDexFiles(new File(dataDir, "dalvik-cache"));
                 }
             }
