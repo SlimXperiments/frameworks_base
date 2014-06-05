@@ -20,6 +20,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.text.format.DateFormat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -31,8 +32,6 @@ import com.android.systemui.R;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-
-import libcore.icu.ICU;
 
 public class DateView extends TextView {
     private static final String TAG = "DateView";
@@ -92,8 +91,8 @@ public class DateView extends TextView {
             final String weekdayFormat = getContext().getString(R.string.system_ui_weekday_pattern);
             final String dateFormat = getContext().getString(R.string.system_ui_date_pattern);
             final Locale l = Locale.getDefault();
-            String weekdayFmt = ICU.getBestDateTimePattern(weekdayFormat, l.toString());
-            String dateFmt = ICU.getBestDateTimePattern(dateFormat, l.toString());
+            String weekdayFmt = DateFormat.getBestDateTimePattern(l, weekdayFormat);
+            String dateFmt = DateFormat.getBestDateTimePattern(l, dateFormat);
 
             mDateFormat = new SimpleDateFormat(dateFmt, l);
             mWeekdayFormat = new SimpleDateFormat(weekdayFmt, l);
