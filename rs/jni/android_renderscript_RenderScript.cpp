@@ -397,7 +397,7 @@ nContextSendMessage(JNIEnv *_env, jobject _this, jlong con, jint id, jintArray d
     jint len = 0;
     if (data) {
         len = _env->GetArrayLength(data);
-        ptr = _env->GetIntArrayElements(data, NULL);
+        jint *ptr = _env->GetIntArrayElements(data, NULL);
     }
     LOG_API("nContextSendMessage, con(%p), id(%i), len(%i)", (RsContext)con, id, len);
     rsContextSendMessage((RsContext)con, id, (const uint8_t *)ptr, len * sizeof(int));
@@ -1576,6 +1576,12 @@ nMeshGetIndices(JNIEnv *_env, jobject _this, jlong con, jlong mesh, jlongArray _
     free(prims);
 }
 
+static jint
+nSystemGetPointerSize(JNIEnv *_env, jobject _this) {
+    return (jint)sizeof(void*);
+}
+
+
 // ---------------------------------------------------------------------------
 
 
@@ -1711,6 +1717,7 @@ static JNINativeMethod methods[] = {
 {"rsnMeshGetVertices",               "(JJ[JI)V",                              (void*)nMeshGetVertices },
 {"rsnMeshGetIndices",                "(JJ[J[II)V",                            (void*)nMeshGetIndices },
 
+{"rsnSystemGetPointerSize",          "()I",                                   (void*)nSystemGetPointerSize },
 };
 
 static int registerFuncs(JNIEnv *_env)

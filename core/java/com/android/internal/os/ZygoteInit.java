@@ -29,6 +29,7 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.Trace;
+import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
 import android.util.EventLog;
@@ -193,10 +194,16 @@ public class ZygoteInit {
     static void closeServerSocket() {
         try {
             if (sServerSocket != null) {
+                FileDescriptor fd = sServerSocket.getFileDescriptor();
                 sServerSocket.close();
+                if (fd != null) {
+                    Os.close(fd);
+                }
             }
         } catch (IOException ex) {
             Log.e(TAG, "Zygote:  error closing sockets", ex);
+        } catch (ErrnoException ex) {
+            Log.e(TAG, "Zygote:  error closing descriptor", ex);
         }
 
         sServerSocket = null;
@@ -239,9 +246,11 @@ public class ZygoteInit {
     }
 
     static void preload() {
+        Log.d(TAG, "begin preload");
         preloadClasses();
         preloadResources();
         preloadOpenGL();
+        Log.d(TAG, "end preload");
     }
 
     private static void preloadOpenGL() {
