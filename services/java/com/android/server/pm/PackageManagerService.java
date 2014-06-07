@@ -3881,7 +3881,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                 @Override
                 public void run() {
                     PackageParser.Package pkg = scanPackageLI(file,
-                            flags|PackageParser.PARSE_MUST_BE_APK, scanMode, currentTime, null);
+                            flags|PackageParser.PARSE_MUST_BE_APK, scanMode, currentTime, null, null);
                     // Don't mess around with apps in system partition.
                     if (pkg == null && (flags & PackageParser.PARSE_IS_SYSTEM) == 0 &&
                             mLastScanError == PackageManager.INSTALL_FAILED_INVALID_APK) {

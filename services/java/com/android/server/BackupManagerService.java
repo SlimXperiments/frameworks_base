@@ -5795,13 +5795,12 @@ class BackupManagerService extends IBackupManager.Stub {
             skip = true;
         }
 
-        if (mAutoRestore && mProvisioned && restoreSet != 0) {
-            // Do we have a transport to fetch data for us?
-            IBackupTransport transport = getTransport(mCurrentTransport);
-            if (transport == null) {
-                if (DEBUG) Slog.w(TAG, "No transport");
-                skip = true;
-            }
+        // Do we have a transport to fetch data for us?
+        IBackupTransport transport = getTransport(mCurrentTransport);
+        if (transport == null) {
+            if (DEBUG) Slog.w(TAG, "No transport");
+            skip = true;
+        }
 
         if (!skip && mAutoRestore && mProvisioned) {
             try {
